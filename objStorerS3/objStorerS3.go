@@ -98,3 +98,13 @@ func (s ObjStorerS3) GetSample(id string) (*objStorerGeneric.Sample, error) {
 }
 
 // TODO: Support MultipleObjects retrieval and getting. Useful when using something over 100megs
+
+func (s ObjStorerS3) StoreConfig(config * objStorerGeneric.Config) error {
+	//TODO
+	return errors.New("StoreConfig not implemented for S3")
+}
+
+func (s ObjStorerS3) GetConfig(path string) (*objStorerGeneric.Config, error) {
+	//TODO
+	return nil, errors.New("StoreConfig not implemented for S3")
+}

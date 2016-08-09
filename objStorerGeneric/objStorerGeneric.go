@@ -34,10 +34,21 @@ type ObjStorer interface {
 	// Gets a sample from the database, identified
 	// by its sha2 string
 	GetSample(string) (*Sample, error)
+
+	// Stores a configuration file
+	StoreConfig(*Config) error
+
+	// Gets a configuration file
+	GetConfig(string) (*Config, error)
 }
 
 // TODO: switch from json to probably raw bytes
 type Sample struct {
 	SHA256 string `json:"sha256"`
 	Data   []byte `json:"data"` //this will result in a base64 encoded string when marshaled
+}
+
+type Config struct {
+	Path         string `json:"path"`
+	FileContents []byte `json:"file_contents"`
 }

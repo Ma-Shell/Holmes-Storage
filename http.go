@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"path/filepath"
 
 	"github.com/HolmesProcessing/Holmes-Storage/objStorerGeneric"
 	"github.com/HolmesProcessing/Holmes-Storage/storerGeneric"
@@ -38,6 +39,8 @@ func initHTTP(httpBinding string, eMime bool) {
 
 	router.GET("/samples/:sha256", httpSampleGet)
 	router.PUT("/samples/", httpSampleStore)
+	router.GET("/config/*path", httpConfigGet)
+	router.POST("/config/*path", httpConfigStore)
 
 	http.ListenAndServe(httpBinding, router)
 }
@@ -179,6 +182,48 @@ func httpSampleGet(w http.ResponseWriter, r *http.Request, ps httprouter.Params)
 	w.Header().Set("Content-Disposition", "attachment; filename="+sample.SHA256)
 	w.Header().Set("Content-Type", "application/octet-stream")
 	fmt.Fprint(w, string(sample.Data))
+}
+
+func httpConfigStore(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	path := strings.ToLower(ps.ByName("path"))
+	file, _, err := r.FormFile("config")
+	if err != nil {
+		httpFailure(w, r, err)
+		return
+	}
+	defer file.Close()
+
+	fileBytes, err := ioutil.ReadAll(file)
+	if err != nil {
+		httpFailure(w, r, err)
+		return
+	}
+
+	config := &objStorerGeneric.Config{
+		Path: path,
+		FileContents: fileBytes,
+	}
+
+	err = objStorer.StoreConfig(config)
+	if err != nil {
+		httpFailure(w, r, err)
+		return
+	}
+
+	httpSuccess(w, r, path)
+}
+
+func httpConfigGet(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	config, err := objStorer.GetConfig(strings.ToLower(ps.ByName("path")))
+
+	if err != nil {
+		httpFailure(w, r, err)
+		return
+	}
+
+	w.Header().Set("Content-Disposition", "attachment; filename="+filepath.Base(config.Path))
+	w.Header().Set("Content-Type", "application/octet-stream")
+	fmt.Fprint(w, string(config.FileContents))
 }
 
 func httpSuccess(w http.ResponseWriter, r *http.Request, result interface{}) {

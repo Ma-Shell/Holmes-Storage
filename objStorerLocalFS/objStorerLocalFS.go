@@ -6,12 +6,14 @@ import (
 	"os"
 	"path/filepath"
 	"bytes"
+	"strings"
 
 	"github.com/HolmesProcessing/Holmes-Storage/objStorerGeneric"
 )
 
 type ObjStorerLocalFS struct {
 	StorageLocation string
+	ConfigStorageLocation string
 }
 
 func (s ObjStorerLocalFS) Initialize(configs []*objStorerGeneric.ObjDBConnector) (objStorerGeneric.ObjStorer, error) {
@@ -23,6 +25,9 @@ func (s ObjStorerLocalFS) Initialize(configs []*objStorerGeneric.ObjDBConnector)
 	} else {
 		s.StorageLocation = "./objstorage-local-fs"
 	}
+
+	configStorageLocation := filepath.Clean("./configstorage-local-fs")
+	s.ConfigStorageLocation = configStorageLocation
 	
 	// setup storage location if not exists
 	if err := s.Setup(); err != nil {
@@ -62,6 +67,15 @@ func (s ObjStorerLocalFS) Setup() error {
 		return err
 	}
 	_, err = os.Stat(s.StorageLocation)
+	if err != nil {
+		return err
+	}
+
+	err = os.MkdirAll(s.ConfigStorageLocation, 0755)
+	if err != nil {
+		return err
+	}
+	_, err = os.Stat(s.ConfigStorageLocation)
 	return err
 }
 
@@ -87,3 +101,36 @@ func (s ObjStorerLocalFS) GetSample(id string) (*objStorerGeneric.Sample, error)
 }
 
 // TODO: Support MultipleObjects retrieval and getting. Useful when using something over 100megs
+
+func (s ObjStorerLocalFS) SanitizePath(path string) (string, error) {
+	path = filepath.Join(s.ConfigStorageLocation, path)
+	if !strings.HasPrefix(path, s.ConfigStorageLocation) {
+		return "", errors.New("permission denied")
+	}
+	return path, nil
+}
+
+func (s ObjStorerLocalFS) StoreConfig(config * objStorerGeneric.Config) error {
+	path, err := s.SanitizePath(config.Path)
+
+	// Make sure all the parent directories exist
+	err = os.MkdirAll(filepath.Dir(path), 0755)
+	if err != nil {
+		return err
+	}
+
+	// If the file already exists, simply overwrite it
+	return ioutil.WriteFile(path, config.FileContents, 0644)
+}
+
+func (s ObjStorerLocalFS) GetConfig(path string) (*objStorerGeneric.Config, error) {
+	config := &objStorerGeneric.Config{Path: path}
+	path, err := s.SanitizePath(path)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := ioutil.ReadFile(path)
+	config.FileContents = data
+	return config, err
+}
