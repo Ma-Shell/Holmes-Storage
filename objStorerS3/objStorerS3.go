@@ -15,8 +15,9 @@ import (
 )
 
 type ObjStorerS3 struct {
-	DB     *s3.S3
-	Bucket string
+	DB           *s3.S3
+	Bucket       string
+	ConfigBucket string
 }
 
 func (s ObjStorerS3) Initialize(c []*objStorerGeneric.ObjDBConnector) (objStorerGeneric.ObjStorer, error) {
@@ -36,6 +37,7 @@ func (s ObjStorerS3) Initialize(c []*objStorerGeneric.ObjDBConnector) (objStorer
 	}))
 
 	s.Bucket = c[0].Bucket
+	s.ConfigBucket = c[0].ConfigBucket
 
 	// since there is no definit way to test the connection
 	// we are just doint a dummy request here to see if the
@@ -61,6 +63,28 @@ func (s ObjStorerS3) Setup() error {
 		}
 
 		if err = s.DB.WaitUntilBucketExists(&s3.HeadBucketInput{Bucket: &s.Bucket}); err != nil {
+			return err
+		}
+	}
+
+	// same for the ConfigBucket
+
+	// test if the bucket already exists
+	_, err = s.DB.ListObjects(&s3.ListObjectsInput{
+		Bucket: &s.ConfigBucket,
+	})
+
+	// create the bucket if it doesn't exist
+	if err != nil {
+		_, err := s.DB.CreateBucket(&s3.CreateBucketInput{
+			Bucket: &s.ConfigBucket,
+		})
+
+		if err != nil {
+			return err
+		}
+
+		if err = s.DB.WaitUntilBucketExists(&s3.HeadBucketInput{Bucket: &s.ConfigBucket}); err != nil {
 			return err
 		}
 	}
@@ -100,11 +124,27 @@ func (s ObjStorerS3) GetSample(id string) (*objStorerGeneric.Sample, error) {
 // TODO: Support MultipleObjects retrieval and getting. Useful when using something over 100megs
 
 func (s ObjStorerS3) StoreConfig(config * objStorerGeneric.Config) error {
-	//TODO
-	return errors.New("StoreConfig not implemented for S3")
+	print("WARNING: StoreConfig for S3 untested!") //TODO
+	_, err := s.DB.PutObject(&s3.PutObjectInput{
+		Body:   bytes.NewReader(config.FileContents),
+		Bucket: &s.ConfigBucket,
+		Key:    &config.Path,
+	})
+	return err
 }
 
 func (s ObjStorerS3) GetConfig(path string) (*objStorerGeneric.Config, error) {
-	//TODO
-	return nil, errors.New("StoreConfig not implemented for S3")
+	print("WARNING: GetConfig for S3 untested!") //TODO
+	config := &objStorerGeneric.Config{Path: path}
+	resp, err := s.DB.GetObject(&s3.GetObjectInput{
+		Bucket: &s.ConfigBucket,
+		Key:    &path,
+	})
+
+	if err != nil {
+		return config, err
+	}
+
+	config.FileContents, err = ioutil.ReadAll(resp.Body)
+	return config, err
 }

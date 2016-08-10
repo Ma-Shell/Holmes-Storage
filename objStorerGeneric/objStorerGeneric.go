@@ -9,13 +9,14 @@ don't change these structs here!
 */
 
 type ObjDBConnector struct {
-	IP         string
-	Port       int
-	Region     string
-	Key        string
-	Secret     string
-	Bucket     string
-	DisableSSL bool
+	IP           string
+	Port         int
+	Region       string
+	Key          string
+	Secret       string
+	Bucket       string
+	ConfigBucket string
+	DisableSSL   bool
 }
 
 type ObjStorer interface {

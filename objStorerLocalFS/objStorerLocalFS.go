@@ -25,8 +25,14 @@ func (s ObjStorerLocalFS) Initialize(configs []*objStorerGeneric.ObjDBConnector)
 	} else {
 		s.StorageLocation = "./objstorage-local-fs"
 	}
+	var configStorageLocation string
+	if len(configs) > 0 && configs[0].ConfigBucket != "" {
+		configStorageLocation = configs[0].ConfigBucket
+	} else {
+		configStorageLocation = "./configstorage-local-fs"
+	}
 
-	configStorageLocation := filepath.Clean("./configstorage-local-fs")
+	configStorageLocation = filepath.Clean(configStorageLocation)
 	s.ConfigStorageLocation = configStorageLocation
 	
 	// setup storage location if not exists
